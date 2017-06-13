@@ -169,7 +169,7 @@ while True:
     old_obs = obs
     obs, actual_reward, is_finished, info = env.step(action)
     if avg_loss == 0 and actual_reward == 0:
-        actual_reward = random.random() * -1.0
+        actual_reward = random.random() * -0.5
     print("Reward this turn: " + str(actual_reward))
 
     judge_vals = sess.run({"pred_reward": judge_out, "state_out": judge_state_out}, feed_dict=unpack_state({actions: np.expand_dims(action, axis=0), data: np.expand_dims(obs, axis=0)}, judge_state_old, judge_state_in))
