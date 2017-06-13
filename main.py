@@ -1,6 +1,5 @@
 import gym
 import ppaquette_gym_doom
-import tflearn
 import tensorflow as tf
 import numpy as np
 import math
