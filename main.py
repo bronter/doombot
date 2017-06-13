@@ -46,7 +46,7 @@ def make_viewer(obs):
     reshaped_eyes = tf.reshape(eyes, [-1, fc_n])
     return (fc_n, reshaped_eyes, viewer_vars)
 
-lstm_layers = [1024, 1024]
+lstm_layers = [512, 256]
 
 def make_agent(viewer):
     (fc_n, viewer, _) = viewer
