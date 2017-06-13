@@ -46,9 +46,7 @@ def make_viewer(obs):
     reshaped_eyes = tf.reshape(eyes, [-1, fc_n])
     return (fc_n, reshaped_eyes, viewer_vars)
 
-lstm_size = 2048
-
-lstm_layers = [1024, 512]
+lstm_layers = [1024, 1024]
 
 def make_agent(viewer):
     (fc_n, viewer, _) = viewer
@@ -160,7 +158,7 @@ while True:
     judge_run_agent = sess.run(judge_out, feed_dict=unpack_state(unpack_state({data: np.expand_dims(obs, axis=0)}, judge_state, judge_state_in), agent_state_old, agent_state_in))
 
 
-    random_is_better = judge_run_random[0][0] > judge_run_agent[0][0]
+    random_is_better = judge_run_random[0][0] > judge_run_agent[0][0] and random.random() < 0.5
 
     threshold = i < 0
 
