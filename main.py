@@ -30,8 +30,8 @@ obs = game.get_state().screen_buffer
 height = 480
 width = 640
 channels = 3
-data = tf.placeholder_with_default(tf.zeros([1, height, width, channels]), [None, height, width, channels])
-reward = tf.placeholder_with_default(tf.zeros([1, 1]), [None, 1])
+data = tf.compat.v1.placeholder_with_default(tf.zeros([1, height, width, channels]), [None, height, width, channels])
+reward = tf.compat.v1.placeholder_with_default(tf.zeros([1, 1]), [None, 1])
 
 def make_viewer(screen_buf_variable):
     eyes = screen_buf_variable
@@ -42,13 +42,13 @@ def make_viewer(screen_buf_variable):
     viewer_vars = []
     while filters <= 216:
         filters *= 6
-        eyes_filter = tf.Variable(tf.random_normal([5, 5, filters_old, filters]))
-        eyes_bias = tf.Variable(tf.random_normal([filters]))
+        eyes_filter = tf.Variable(tf.random.normal([5, 5, filters_old, filters]))
+        eyes_bias = tf.Variable(tf.random.normal([filters]))
         viewer_vars.extend([eyes_filter, eyes_bias])
-        eyes = tf.nn.conv2d(eyes, eyes_filter, strides=[1, 3, 3, 1], padding='SAME')
+        eyes = tf.nn.conv2d(input=eyes, filters=eyes_filter, strides=[1, 3, 3, 1], padding='SAME')
         eyes = tf.nn.bias_add(eyes, eyes_bias)
         eyes = tf.nn.elu(eyes)
-        eyes = tf.nn.max_pool(eyes, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        eyes = tf.nn.max_pool2d(input=eyes, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
         filters_old = filters
         n_height = math.ceil(n_height / 6.0)
         n_width = math.ceil(n_width / 6.0)
@@ -65,22 +65,22 @@ def make_agent(viewer):
     state_in = []
     for layer_size in lstm_layers:
         layer_defs.append(tf.contrib.rnn.LSTMBlockCell(layer_size, use_peephole=True))
-    agent_brain = tf.contrib.rnn.MultiRNNCell(layer_defs)
+    agent_brain = tf.compat.v1.nn.rnn_cell.MultiRNNCell(layer_defs)
     zero_state = agent_brain.zero_state(1, dtype=tf.float32)
     state_size = agent_brain.state_size
     for index, size in enumerate(state_size):
         (c, h) = (
-            tf.placeholder_with_default(zero_state[index].c, (1, size.c)),
-            tf.placeholder_with_default(zero_state[index].h, (1, size.h)))
+            tf.compat.v1.placeholder_with_default(zero_state[index].c, (1, size.c)),
+            tf.compat.v1.placeholder_with_default(zero_state[index].h, (1, size.h)))
         state_in.append((c, h))
 
-    viewer_weights = tf.Variable(tf.random_normal([fc_n, lstm_layers[-1]]))
-    viewer_biases = tf.Variable(tf.random_normal([lstm_layers[-1]]))
+    viewer_weights = tf.Variable(tf.random.normal([fc_n, lstm_layers[-1]]))
+    viewer_biases = tf.Variable(tf.random.normal([lstm_layers[-1]]))
     output, state_out = agent_brain(tf.matmul(viewer, viewer_weights) + viewer_biases, state_in)
-    agent_weights = tf.Variable(tf.random_normal([lstm_layers[-1], action_length]))
-    agent_biases = tf.Variable(tf.random_normal([action_length]))
+    agent_weights = tf.Variable(tf.random.normal([lstm_layers[-1], action_length]))
+    agent_biases = tf.Variable(tf.random.normal([action_length]))
     agent_out = tf.nn.softmax(tf.matmul(output, agent_weights) + agent_biases)
-    agent_out = tf.placeholder_with_default(agent_out, agent_out.get_shape())
+    agent_out = tf.compat.v1.placeholder_with_default(agent_out, agent_out.get_shape())
     return (agent_out, state_in, state_out, [viewer_weights, viewer_biases, agent_weights, agent_biases])
 
 def make_judge(viewer, agent_actions, real_reward, agent_vars):
@@ -89,29 +89,29 @@ def make_judge(viewer, agent_actions, real_reward, agent_vars):
     state_in = []
     for layer_size in lstm_layers:
         layer_defs.append(tf.contrib.rnn.LSTMBlockCell(layer_size, use_peephole=True))
-    judge_brain = tf.contrib.rnn.MultiRNNCell(layer_defs)
+    judge_brain = tf.compat.v1.nn.rnn_cell.MultiRNNCell(layer_defs)
     zero_state = judge_brain.zero_state(1, dtype=tf.float32)
     state_size = judge_brain.state_size
     for index, size in enumerate(state_size):
         (c, h) = (
-            tf.placeholder_with_default(zero_state[index].c, (1, size.c)),
-            tf.placeholder_with_default(zero_state[index].h, (1, size.h)))
+            tf.compat.v1.placeholder_with_default(zero_state[index].c, (1, size.c)),
+            tf.compat.v1.placeholder_with_default(zero_state[index].h, (1, size.h)))
         state_in.append((c, h))
 
-    viewer_weights = tf.Variable(tf.random_normal([fc_n, lstm_layers[-1]]))
-    actions_weights = tf.Variable(tf.random_normal([action_length, fc_n]))
-    viewer_biases = tf.Variable(tf.random_normal([lstm_layers[-1]]))
-    actions_biases = tf.Variable(tf.random_normal([fc_n]))
-    actions = tf.placeholder_with_default(agent_actions, [1, action_length])
+    viewer_weights = tf.Variable(tf.random.normal([fc_n, lstm_layers[-1]]))
+    actions_weights = tf.Variable(tf.random.normal([action_length, fc_n]))
+    viewer_biases = tf.Variable(tf.random.normal([lstm_layers[-1]]))
+    actions_biases = tf.Variable(tf.random.normal([fc_n]))
+    actions = tf.compat.v1.placeholder_with_default(agent_actions, [1, action_length])
     view_and_actions = tf.matmul(tf.add(tf.nn.l2_normalize(viewer, 1), tf.matmul(actions, actions_weights) + actions_biases), viewer_weights)
     output, state_out = judge_brain(view_and_actions + viewer_biases, state_in)
 
-    judge_weights = tf.Variable(tf.random_normal([lstm_layers[-1], 1]))
-    judge_biases = tf.Variable(tf.random_normal([1]))
+    judge_weights = tf.Variable(tf.random.normal([lstm_layers[-1], 1]))
+    judge_biases = tf.Variable(tf.random.normal([1]))
     judge_out = tf.matmul(output, judge_weights) + judge_biases
-    judge_train = tf.train.AdamOptimizer()
-    judge_train = judge_train.minimize(tf.losses.absolute_difference(real_reward, judge_out))
-    judge_train_actions = tf.train.AdamOptimizer()
+    judge_train = tf.compat.v1.train.AdamOptimizer()
+    judge_train = judge_train.minimize(tf.compat.v1.losses.absolute_difference(real_reward, judge_out))
+    judge_train_actions = tf.compat.v1.train.AdamOptimizer()
     # judge_train_actions = judge_train_actions.minimize(-judge_out, var_list=agent_vars.extend(viewer_vars))
     judge_train_actions = judge_train_actions.minimize(-judge_out)
 
@@ -119,19 +119,20 @@ def make_judge(viewer, agent_actions, real_reward, agent_vars):
 
 (player, agent, judge) = (None, None, None)
 
-with tf.variable_scope('viewer'):
+# Give each of these entities their own variable scope so we can more precisely control training
+with tf.compat.v1.variable_scope('viewer'):
     player = make_viewer(data)
 
-with tf.variable_scope('agent'):
+with tf.compat.v1.variable_scope('agent'):
     agent = make_agent(player)
 (agent_out, agent_state_in, agent_state_out, agent_vars) = agent
 
-with tf.variable_scope('judge'):
+with tf.compat.v1.variable_scope('judge'):
     judge = make_judge(player, agent_out, reward, agent_vars)
 (judge_out, actions, judge_state_in, judge_state_out, judge_train, judge_train_actions) = judge
 
-sess = tf.Session()
-sess.run(tf.global_variables_initializer())
+sess = tf.compat.v1.Session()
+sess.run(tf.compat.v1.global_variables_initializer())
 
 score = 0
 
