@@ -10,4 +10,6 @@ I train the network by running two different optimization passes which sort of b
 
 Requirements:
 -------------
-This program is built with Tensorflow, so you'll need that, and you'll also need to install openai gym and the doom levels for it: https://github.com/ppaquette/gym-doom
+Tensorflow 1.14
+ViZDoom - Helps to also clone their repository if you want to use their pre-made configs and WADs: https://github.com/mwydmuch/ViZDoom/tree/master/scenarios
+Numpy

@@ -1,29 +1,40 @@
-import gym
-import ppaquette_gym_doom
+import vizdoom as vzd
 import tensorflow as tf
 import numpy as np
 import math
 import random
 
-env = gym.make('ppaquette/meta-Doom-v0')
-env.reset()
+# TODO: Get this from args
+DEFAULT_CONFIG = "../ViZDoom/scenarios/deadly_corridor.cfg"
+
+game = vzd.DoomGame()
+game.load_config(DEFAULT_CONFIG)
+
+game.set_screen_format(vzd.ScreenFormat.RGB24)
+game.set_screen_resolution(vzd.ScreenResolution.RES_640X480)
+
+game.set_render_hud(True)
+game.set_render_minimal_hud(False)
+
+game.init()
+
+game.new_episode()
+
+buttons = game.get_available_buttons()
+action_length = len(buttons)
 
 total_score = 0
 
-action_length = len(env.action_space.sample())
-
-def get_action():
-    action = env.action_space.sample()
-    return action
-obs = env.step(get_action())
-height = len(obs[0])
-width = len(obs[0][0])
-channels = len(obs[0][0][0])
+obs = game.get_state().screen_buffer
+# Hard-coding these for now since we hard-code the screen resolution above anyways
+height = 480
+width = 640
+channels = 3
 data = tf.placeholder_with_default(tf.zeros([1, height, width, channels]), [None, height, width, channels])
 reward = tf.placeholder_with_default(tf.zeros([1, 1]), [None, 1])
 
-def make_viewer(obs):
-    eyes = obs
+def make_viewer(screen_buf_variable):
+    eyes = screen_buf_variable
     filters_old = 3
     filters = 6
     n_height = height
@@ -68,7 +79,7 @@ def make_agent(viewer):
     output, state_out = agent_brain(tf.matmul(viewer, viewer_weights) + viewer_biases, state_in)
     agent_weights = tf.Variable(tf.random_normal([lstm_layers[-1], action_length]))
     agent_biases = tf.Variable(tf.random_normal([action_length]))
-    agent_out = tf.nn.elu(tf.matmul(output, agent_weights) + agent_biases)+ tf.ones([action_length])
+    agent_out = tf.nn.softmax(tf.matmul(output, agent_weights) + agent_biases)
     agent_out = tf.placeholder_with_default(agent_out, agent_out.get_shape())
     return (agent_out, state_in, state_out, [viewer_weights, viewer_biases, agent_weights, agent_biases])
 
@@ -124,8 +135,6 @@ sess.run(tf.global_variables_initializer())
 
 score = 0
 
-obs = obs[0]
-
 i = 0
 
 avg_loss = 0
@@ -146,15 +155,14 @@ while True:
     agent_feed_dict = {data: np.expand_dims(obs, axis=0)}
     agent_feed_dict = unpack_state(agent_feed_dict, agent_state, agent_state_in)
     agent_vals = sess.run(agent_fetches, feed_dict=agent_feed_dict)
-    agent_action = agent_vals["agent_out"]
+    agent_action = np.eye(action_length)[np.argmax(agent_vals["agent_out"], axis=1)][0]
     agent_state = agent_vals["state_out"]
     action = agent_action[0]
 
     judge_state_old = judge_state
 
-    random_action = np.array(env.action_space.sample())
+    random_action = random.choice(np.eye(action_length))
     judge_run_random = sess.run(judge_out, feed_dict=unpack_state({actions: np.expand_dims(random_action, axis=0), data: np.expand_dims(obs, axis=0)}, judge_state, judge_state_in))
-    agent_action = agent_action
     judge_run_agent = sess.run(judge_out, feed_dict=unpack_state(unpack_state({data: np.expand_dims(obs, axis=0)}, judge_state, judge_state_in), agent_state_old, agent_state_in))
 
 
@@ -162,12 +170,21 @@ while True:
 
     threshold = i < 0
 
-    action = random_action if random_is_better or threshold else agent_action[0]
+    action = random_action if random_is_better or threshold else agent_action
 
     if random_is_better or threshold:
         print("Taking random action")
     old_obs = obs
-    obs, actual_reward, is_finished, info = env.step(action)
+    game.make_action(list(action))
+    is_finished = game.is_episode_finished()
+    if is_finished:
+        print("Reset")
+        game.new_episode()
+        judge_state = judge_state_old = judge_initial_state
+        agent_state = agent_state_old = agent_initial_state
+    state = game.get_state()
+    obs = state.screen_buffer
+    actual_reward = game.get_last_reward()
     if avg_loss == 0 and actual_reward == 0:
         actual_reward = random.random() * -0.5
     print("Reward this turn: " + str(actual_reward))
@@ -186,10 +203,4 @@ while True:
         sess.run(judge_train_actions, feed_dict=unpack_state(unpack_state({data: np.expand_dims(old_obs, axis=0)}, agent_state_old, agent_state_in), judge_state_old, judge_state_in))
 
     print("prediction loss: " + str(abs(pred_reward[0][0] - avg_loss)))
-    if is_finished:
-        print("Reset")
-        env.reset()
-        judge_state = judge_state_old = judge_initial_state
-        agent_state = agent_state_old = agent_initial_state
-    env.render()
     i += 1
