@@ -11,5 +11,7 @@ I train the network by running two different optimization passes which sort of b
 Requirements:
 -------------
 Tensorflow 1.14
+
 ViZDoom - Helps to also clone their repository if you want to use their pre-made configs and WADs: https://github.com/mwydmuch/ViZDoom/tree/master/scenarios
+
 Numpy
