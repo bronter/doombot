@@ -4,6 +4,8 @@ import numpy as np
 import math
 import random
 
+tf.compat.v1.disable_eager_execution()
+
 # TODO: Get this from args
 DEFAULT_CONFIG = "../ViZDoom/scenarios/deadly_corridor.cfg"
 
@@ -64,7 +66,7 @@ def make_agent(viewer):
     layer_defs = []
     state_in = []
     for layer_size in lstm_layers:
-        layer_defs.append(tf.contrib.rnn.LSTMBlockCell(layer_size, use_peephole=True))
+        layer_defs.append(tf.compat.v1.nn.rnn_cell.LSTMCell(layer_size, use_peepholes=True))
     agent_brain = tf.compat.v1.nn.rnn_cell.MultiRNNCell(layer_defs)
     zero_state = agent_brain.zero_state(1, dtype=tf.float32)
     state_size = agent_brain.state_size
@@ -88,7 +90,7 @@ def make_judge(viewer, agent_actions, real_reward, agent_vars):
     layer_defs = []
     state_in = []
     for layer_size in lstm_layers:
-        layer_defs.append(tf.contrib.rnn.LSTMBlockCell(layer_size, use_peephole=True))
+        layer_defs.append(tf.compat.v1.nn.rnn_cell.LSTMCell(layer_size, use_peepholes=True))
     judge_brain = tf.compat.v1.nn.rnn_cell.MultiRNNCell(layer_defs)
     zero_state = judge_brain.zero_state(1, dtype=tf.float32)
     state_size = judge_brain.state_size
