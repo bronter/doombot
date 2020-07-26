@@ -1,7 +1,7 @@
 # doombot
-Bot that plays openai gym's doom levels
+Bot that plays DOOM levels
 
-Currently a work-in-progress, can beat the first couple levels on meta-Doom-v0, seems to get stuck on the third.
+Currently a work-in-progress, just ported from the OpenAI Gym: https://github.com/ppaquette/gym-doom (no longer maintained)
 This is a neural-network based agent that learns to play doom, using something similar to an actor-critic setup where the screen content first is fed through a series of 2d convolution and max pooling layers, then gets fed to two entities:
 * The Agent - This is a fully-connected LSTM connected to the convolutional layers output, it puts out an array of actions which we can read from to take an action in the game, and they're also fed to the second part of the network, the judge.
 * The Judge - Another fully-connected LSTM, this one takes both the actions from the agent and the output of the convolutional layers, and tries to predict what the score (well, really the reward) will be once the action has been taken.
